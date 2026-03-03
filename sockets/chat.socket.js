@@ -1,4 +1,5 @@
 const { verifyToken } = require("../config/jwt");
+const Message = require("../models/Message");
 
 module.exports = (io) => {
 
@@ -19,36 +20,67 @@ module.exports = (io) => {
     }
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     console.log("User connected:", socket.userId);
 
-    // 🔹 Join Private Room
-    socket.on("join_room", ({ otherUserId }) => {
-      const roomId = [socket.userId, otherUserId]
-        .sort()
-        .join("_");
+    // 🔥 Join Global Room
+    socket.join("GLOBAL_ROOM");
 
-      socket.join(roomId);
+    // 🔥 Send existing non-expired messages
+    try {
+      const messages = await Message.find({
+        expiresAt: { $gt: new Date() },
+      }).sort({ createdAt: 1 });
 
-      console.log(`User ${socket.userId} joined room ${roomId}`);
-    });
-
-    // 🔹 Send Message To Room
-    socket.on("send_message", (data) => {
-      const { otherUserId } = data;
-
-      const roomId = [socket.userId, otherUserId]
-        .sort()
-        .join("_");
-
-      io.to(roomId).emit("receive_message", {
-        senderId: socket.userId,
-        encryptedMessage: data.encryptedMessage,
-        encryptedAESKey: data.encryptedAESKey,
-        ttl: data.ttl,
-        messageId: data.messageId,
-        timestamp: data.timestamp,
+      messages.forEach((msg) => {
+        socket.emit("receive_message", {
+          senderId: msg.senderId,
+          encryptedMessage: msg.encryptedMessage,
+          encryptedAESKey: msg.encryptedAESKey,
+          iv: msg.iv,
+          ttl: Math.floor(
+            (msg.expiresAt - Date.now()) / 1000
+          ),
+          messageId: msg._id,
+          timestamp: msg.createdAt,
+        });
       });
+    } catch (err) {
+      console.error("Error loading old messages:", err);
+    }
+
+    // 🔥 When user sends message
+    socket.on("send_message", async (data) => {
+      try {
+        const ttlSeconds = data.ttl || 300; // default 5 min
+
+        const expiresAt = new Date(
+          Date.now() + ttlSeconds * 1000
+        );
+
+        // 🔥 Save encrypted message
+        const newMessage = await Message.create({
+          senderId: socket.userId,
+          encryptedMessage: data.encryptedMessage,
+          encryptedAESKey: data.encryptedAESKey,
+          iv: data.iv,
+          expiresAt: expiresAt,
+        });
+
+        // 🔥 Broadcast to GLOBAL_ROOM
+        io.to("GLOBAL_ROOM").emit("receive_message", {
+          senderId: socket.userId,
+          encryptedMessage: data.encryptedMessage,
+          encryptedAESKey: data.encryptedAESKey,
+          iv: data.iv,
+          ttl: ttlSeconds,
+          messageId: newMessage._id,
+          timestamp: newMessage.createdAt,
+        });
+
+      } catch (err) {
+        console.error("Message error:", err);
+      }
     });
 
     socket.on("disconnect", () => {
