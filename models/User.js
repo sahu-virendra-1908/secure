@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
   password: String,
 //   publicKey: String,
   isVerified: Boolean,
-  emailToken: String
+
 },
   { timestamps: true }
 );

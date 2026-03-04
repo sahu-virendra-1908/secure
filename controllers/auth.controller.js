@@ -21,20 +21,19 @@ exports.signup = async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      publicKey,
-      emailToken,
+   
     });
 
-    const verifyUrl = `http://localhost:5000/api/auth/verify/${emailToken}`;
+    // const verifyUrl = `http://localhost:5000/api/auth/verify/${emailToken}`;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Verify Your Email",
-      html: `<h3>Click to verify:</h3><a href="${verifyUrl}">${verifyUrl}</a>`,
-    });
+    // await transporter.sendMail({
+    //   from: process.env.EMAIL_USER,
+    //   to: email,
+    //   subject: "Verify Your Email",
+    //   html: `<h3>Click to verify:</h3><a href="${verifyUrl}">${verifyUrl}</a>`,
+    // });
 
-    res.json({ message: "Signup successful. Check email to verify." });
+    res.json({ message: "Signup successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
