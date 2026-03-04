@@ -32,8 +32,16 @@ exports.signup = async (req, res) => {
     //   subject: "Verify Your Email",
     //   html: `<h3>Click to verify:</h3><a href="${verifyUrl}">${verifyUrl}</a>`,
     // });
+  const token = generateToken(user._id);
 
-    res.json({ message: "Signup successful" });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
