@@ -3,9 +3,10 @@ const Message = require("../models/Message");
 
 module.exports = (io) => {
 
-  // 🔐 Socket authentication middleware
+  // Socket authentication
   io.use((socket, next) => {
     try {
+
       const token =
         socket.handshake.auth?.token ||
         socket.handshake.query?.token;
@@ -15,13 +16,18 @@ module.exports = (io) => {
       }
 
       const decoded = verifyToken(token);
+
       socket.userId = decoded.id;
 
       next();
+
     } catch (err) {
+
       next(new Error("Authentication error"));
+
     }
   });
+
 
   io.on("connection", async (socket) => {
 
@@ -30,19 +36,22 @@ module.exports = (io) => {
     // Join global room
     socket.join("GLOBAL_ROOM");
 
-    // Send existing non-expired messages
+
+    // Send old messages
     try {
 
-      const messages = await Message.find({
-        expiresAt: { $gt: new Date() }
-      }).sort({ createdAt: 1 });
+      const messages = await Message.find().sort({ createdAt: 1 });
 
       messages.forEach((msg) => {
 
-        const ttl = Math.max(
-          0,
-          Math.floor((msg.expiresAt - Date.now()) / 1000)
-        );
+        let ttl = 0;
+
+        if (msg.expiresAt) {
+          ttl = Math.max(
+            0,
+            Math.floor((msg.expiresAt - Date.now()) / 1000)
+          );
+        }
 
         socket.emit("receive_message", {
 
@@ -71,12 +80,12 @@ module.exports = (io) => {
 
     }
 
-    // When user sends a message
+
+    // When user sends message
     socket.on("send_message", async (data) => {
 
       try {
 
-        // Basic validation
         if (
           !data.encryptedMessage ||
           !data.encryptedAESKey ||
@@ -85,10 +94,17 @@ module.exports = (io) => {
           return;
         }
 
-        const ttlSeconds = data.ttl || 300;
+        const ttlSeconds = data.ttl || 0;
 
-        const expiresAt =
-          new Date(Date.now() + ttlSeconds * 1000);
+        let expiresAt = null;
+
+        if (ttlSeconds > 0) {
+
+          expiresAt = new Date(
+            Date.now() + ttlSeconds * 1000
+          );
+
+        }
 
         const newMessage = await Message.create({
 
@@ -133,6 +149,7 @@ module.exports = (io) => {
       }
 
     });
+
 
     socket.on("disconnect", () => {
 
