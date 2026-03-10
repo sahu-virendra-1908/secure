@@ -6,27 +6,27 @@ const messageSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  encryptedMessage: {
+
+  messageType: {
     type: String,
-    required: true,
+    enum: ["text", "voice"],
+    default: "text"
   },
-  encryptedAESKey: {
-    type: String,
-    required: true,
-  },
-  iv: {
-    type: String,
-    required: true,
-  },
+
+  encryptedMessage: String,
+  encryptedAESKey: String,
+  iv: String,
+
   expiresAt: {
     type: Date,
     required: true,
-    index: { expires: 0 }, // 🔥 Auto delete
+    index: { expires: 0 }
   },
+
   createdAt: {
     type: Date,
-    default: Date.now,
-  },
+    default: Date.now
+  }
 });
 
 module.exports = mongoose.model("Message", messageSchema);
