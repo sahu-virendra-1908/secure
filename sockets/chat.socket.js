@@ -3,8 +3,8 @@ const Message = require("../models/Message");
 
 module.exports = (io) => {
 
-  // Socket authentication
   io.use((socket, next) => {
+
     try {
 
       const token =
@@ -23,9 +23,12 @@ module.exports = (io) => {
 
     } catch (err) {
 
+      console.log("Auth error");
+
       next(new Error("Authentication error"));
 
     }
+
   });
 
 
@@ -33,31 +36,20 @@ module.exports = (io) => {
 
     console.log("User connected:", socket.userId);
 
-    // Join global room
-    socket.join("GLOBAL_ROOM");
 
-
-    // Send old messages
+    // Load old messages
     try {
 
-      const messages = await Message.find().sort({ createdAt: 1 });
+      const messages =
+        await Message.find().sort({ createdAt: 1 });
 
       messages.forEach((msg) => {
-
-        let ttl = 0;
-
-        if (msg.expiresAt) {
-          ttl = Math.max(
-            0,
-            Math.floor((msg.expiresAt - Date.now()) / 1000)
-          );
-        }
 
         socket.emit("receive_message", {
 
           senderId: msg.senderId,
 
-          messageType: msg.messageType || "text",
+          messageType: msg.messageType,
 
           encryptedMessage: msg.encryptedMessage,
 
@@ -65,23 +57,23 @@ module.exports = (io) => {
 
           iv: msg.iv,
 
-          ttl: ttl,
+          ttl: 0,
 
           messageId: msg._id,
 
           timestamp: msg.createdAt
+
         });
 
       });
 
     } catch (err) {
 
-      console.error("Error loading old messages:", err);
+      console.log("Error loading messages");
 
     }
 
 
-    // When user sends message
     socket.on("send_message", async (data) => {
 
       try {
@@ -100,9 +92,8 @@ module.exports = (io) => {
 
         if (ttlSeconds > 0) {
 
-          expiresAt = new Date(
-            Date.now() + ttlSeconds * 1000
-          );
+          expiresAt =
+            new Date(Date.now() + ttlSeconds * 1000);
 
         }
 
@@ -122,7 +113,10 @@ module.exports = (io) => {
 
         });
 
-        io.to("GLOBAL_ROOM").emit("receive_message", {
+        console.log("Broadcast message");
+
+
+        io.emit("receive_message", {
 
           senderId: socket.userId,
 
