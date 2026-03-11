@@ -11,8 +11,8 @@ require("./routes/auth.routes");
 const messageRoutes =
 require("./routes/message.routes");
 
-const authMiddleware =
-require("./middleware/auth.middleware");
+// const authMiddleware =
+// require("./middleware/auth.middleware");
 
 const app = express();
 
@@ -26,7 +26,7 @@ app.use("/api/auth", authRoutes);
 
 app.use(
   "/api/messages",
-  authMiddleware,
+  
   messageRoutes
 );
 
