@@ -1,28 +1,20 @@
 require("dotenv").config();
 
 const express = require("express");
-const http = require("http");
 const cors = require("cors");
-const { Server } = require("socket.io");
 
 const connectDB = require("./config/db");
-const authRoutes = require("./routes/auth.routes");
-const initSocket = require("./sockets/chat.socket");
+
+const authRoutes =
+require("./routes/auth.routes");
+
+const messageRoutes =
+require("./routes/message.routes");
+
+const authMiddleware =
+require("./middleware/auth.middleware");
 
 const app = express();
-
-const server = http.createServer(app);
-
-const io = new Server(server, {
-
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  },
-
-  transports: ["websocket", "polling"]
-
-});
 
 connectDB();
 
@@ -32,11 +24,15 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 
-initSocket(io);
+app.use(
+  "/api/messages",
+  authMiddleware,
+  messageRoutes
+);
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
+app.listen(PORT, () => {
 
   console.log(`Server running on port ${PORT}`);
 

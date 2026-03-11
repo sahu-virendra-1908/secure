@@ -15,7 +15,8 @@ module.exports = (io) => {
         return next(new Error("Authentication error"));
       }
 
-      const decoded = verifyToken(token);
+      const decoded = verifyToken(token)
+      ;
 
       socket.userId = decoded.id;
 
